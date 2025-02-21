@@ -9,9 +9,78 @@ support for internationalization.
 import time
 import os
 import re
+import shutil
 from tempfile import mkstemp
 from shutil import move, copymode
 from os import fdopen, remove
+from pathlib import Path
+
+def ensure_directory_exists(directory):
+    """Creates directory if it doesn't exist with proper permissions."""
+    try:
+        if not os.path.exists(directory):
+            os.makedirs(directory, mode=0o755, exist_ok=True)
+            print(f"Created directory: {directory}")
+        return True
+    except Exception as e:
+        print(f"Error creating directory {directory}: {str(e)}")
+        return False
+
+def setup_certificate_paths(use_existing=False):
+    """Sets up certificate paths and handles certificate copying if using existing certs."""
+    # Get the script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Define certificate paths
+    existing_cert_dir = "/etc/ssl/odkx"
+    target_cert_dir = os.path.join(script_dir, "..", "certs")
+    
+    # Ensure directories exist
+    if use_existing:
+        if not os.path.exists(existing_cert_dir):
+            print(f"\nWarning: Source certificate directory {existing_cert_dir} does not exist")
+            print("Creating directory structure...")
+            ensure_directory_exists(existing_cert_dir)
+    
+    # Always ensure target directory exists
+    ensure_directory_exists(target_cert_dir)
+    
+    if use_existing:
+        print(f"\nUsing certificates from {existing_cert_dir}")
+        return existing_cert_dir, target_cert_dir
+    else:
+        return None, target_cert_dir
+
+def copy_existing_certificates(source_dir, target_dir):
+    """Copies existing certificates from source to target directory."""
+    try:
+        # Define certificate files to copy
+        cert_files = {
+            'fullchain.pem': 'fullchain.pem',
+            'privkey.pem': 'privkey.pem'
+        }
+        
+        print(f"\nCopying certificates from {source_dir} to {target_dir}")
+        
+        # Copy each certificate file
+        for source_file, target_file in cert_files.items():
+            source_path = os.path.join(source_dir, source_file)
+            target_path = os.path.join(target_dir, target_file)
+            
+            if os.path.exists(source_path):
+                shutil.copy2(source_path, target_path)
+                # Set appropriate permissions
+                os.chmod(target_path, 0o600)
+                print(f"Copied: {source_file}")
+            else:
+                print(f"Warning: Certificate file not found: {source_path}")
+                print("You will need to manually copy your certificates later.")
+                
+        print("Certificate copying completed.")
+        
+    except Exception as e:
+        print(f"Error copying certificates: {str(e)}")
+        raise
 
 def run_interactive_config():
     env_file_location = os.path.join(os.path.dirname(__file__), "config", "https.env")
@@ -51,7 +120,7 @@ def run_interactive_config():
         enforce_https = input("enforce https [(Y)/n]:")
         if enforce_https == "":
             enforce_https = "y"
-            enforce_https = enforce_https.lower().strip()[0]
+        enforce_https = enforce_https.lower().strip()[0]
         if enforce_https in ["y", "n"]:
             break
 
@@ -67,34 +136,44 @@ def run_interactive_config():
 
     print("Enforcing https:", enforce_https)
     if enforce_https:
-        print("Please provide an admin email for security updates with HTTPS registration")
-        input_email = input("admin email [({})]:".format(email))
+        print("\nDo you want to use existing certificates from /etc/ssl/odkx? (y/N)")
+        use_existing = input("Use existing certificates: ")
+        use_existing = use_existing.lower().strip() == "y"
 
-        if input_email != "":
-            email = input_email
+        if use_existing:
+            source_dir, target_dir = setup_certificate_paths(use_existing=True)
+            copy_existing_certificates(source_dir, target_dir)
+        else:
+            # Original certificate generation code
+            _, target_dir = setup_certificate_paths(use_existing=False)
+            print("Please provide an admin email for security updates with HTTPS registration")
+            input_email = input("admin email [({})]:".format(email))
 
-        print("The system will now attempt to setup an HTTPS certificate for this server.")
-        print("For this to work you must have already have purchased/acquired a domain name (or subdomain) and setup a DNS A or AAAA record to point at this server's IP address.")
-        print("If you have not done this yet, please do it now...")
-        time.sleep(1)
-        proceed = input("Domain is ready to proceed with certificate acquisition? [(Y)/n]")
-        if proceed == "":
-            proceed = "y"
-        if proceed.strip().lower()[0] != "y":
-            print("Re-run this script once the domain is ready!")
-            exit(1)
+            if input_email != "":
+                email = input_email
 
-        os.system("sudo certbot certonly --standalone \
-          --email {} \
-          -d {} \
-          --rsa-key-size 4096 \
-          --agree-tos \
-          --cert-name bootstrap \
-          --keep-until-expiring \
-          --non-interactive".format(email, domain))
+            print("The system will now attempt to setup an HTTPS certificate for this server.")
+            print("For this to work you must have already have purchased/acquired a domain name (or subdomain) and setup a DNS A or AAAA record to point at this server's IP address.")
+            print("If you have not done this yet, please do it now...")
+            time.sleep(1)
+            proceed = input("Domain is ready to proceed with certificate acquisition? [(Y)/n]")
+            if proceed == "":
+                proceed = "y"
+            if proceed.strip().lower()[0] != "y":
+                print("Re-run this script once the domain is ready!")
+                exit(1)
 
-        print("Attempting to save updated https configuration")
-        write_to_env_file(env_file_location, domain, email)
+            os.system("sudo certbot certonly --standalone \
+              --email {} \
+              -d {} \
+              --rsa-key-size 4096 \
+              --agree-tos \
+              --cert-name bootstrap \
+              --keep-until-expiring \
+              --non-interactive".format(email, domain))
+
+            print("Attempting to save updated https configuration")
+            write_to_env_file(env_file_location, domain, email)
 
     return enforce_https
 
