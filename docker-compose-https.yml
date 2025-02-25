@@ -9,9 +9,9 @@ services:
       nginx -g \"daemon off;\" \
       "
     volumes:
-      - /etc/ssl/odkx:/etc/nginx/certs
+      - ./certs:/etc/nginx/certs
     configs:
-      - source: com.nginx.sync-endpoint.conf
+      - source: com.nginx.sync-endpoint.conf 
         target: /etc/nginx/conf.d/default.conf
       - source: com.nginx.sync-endpoint-locations.conf
         target: /etc/nginx/conf/sync-endpoint-locations.conf
@@ -19,9 +19,12 @@ services:
         target: /etc/nginx/conf.d/proxy_buffer.conf
       - source: com.nginx.ssl.conf
         target: /etc/nginx/conf.d/ssl.conf
-
 configs:
-  com.nginx.sync-endpoint.conf:
+  com.nginx.sync-endpoint-https:
     file: ./config/nginx/sync-endpoint-https.conf
+  com.nginx.sync-endpoint-locations.conf:
+    file: ./config/nginx/sync-endpoint-locations.conf
+  com.nginx.proxy_buffer.conf:
+    file: ./config/nginx/proxy_buffer.conf
   com.nginx.ssl.conf:
     file: ./config/nginx/ssl.conf
