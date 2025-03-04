@@ -24,7 +24,3 @@ configs:
     file: ./config/nginx/sync-endpoint-https.conf
   com.nginx.sync-endpoint-locations.conf:
     file: ./config/nginx/sync-endpoint-locations.conf
-  com.nginx.proxy_buffer.conf:
-    file: ./config/nginx/proxy_buffer.conf
-  com.nginx.ssl.conf:
-    file: ./config/nginx/ssl.conf
