@@ -22,5 +22,5 @@ services:
 configs:
   com.nginx.sync-endpoint-https:
     file: ./config/nginx/sync-endpoint-https.conf
-  com.nginx.sync-endpoint-locations.conf:
-    file: ./config/nginx/sync-endpoint-locations.conf
+  com.nginx.ssl.conf:
+    file: ./config/nginx/ssl.conf
