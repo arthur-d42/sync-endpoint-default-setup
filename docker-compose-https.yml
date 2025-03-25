@@ -9,18 +9,7 @@ services:
       nginx -g \"daemon off;\" \
       "
     volumes:
-      - ./certs:/etc/nginx/certs
-    configs:
-      - source: com.nginx.sync-endpoint.conf 
-        target: /etc/nginx/conf.d/default.conf
-      - source: com.nginx.sync-endpoint-locations.conf
-        target: /etc/nginx/conf/sync-endpoint-locations.conf
-      - source: com.nginx.proxy_buffer.conf
-        target: /etc/nginx/conf.d/proxy_buffer.conf
-      - source: com.nginx.ssl.conf
-        target: /etc/nginx/conf.d/ssl.conf
+      - /etc/ssl/odkx:/etc/ssl/odkx
 configs:
-  com.nginx.sync-endpoint-https:
+  com.nginx.sync-endpoint.conf:
     file: ./config/nginx/sync-endpoint-https.conf
-  com.nginx.ssl.conf:
-    file: ./config/nginx/ssl.conf
